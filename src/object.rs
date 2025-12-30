@@ -129,6 +129,13 @@ pub trait ObjectOperations {
         S1: AsRef<str> + Send,
         S2: AsRef<str> + Send;
 
+    /// Get object as a stream.
+    /// This is useful for processing large files without loading the entire content into memory.
+    async fn get_object_stream<S1, S2>(&self, bucket_name: S1, object_key: S2, options: Option<GetObjectOptions>) -> Result<ByteStream>
+    where
+        S1: AsRef<str> + Send,
+        S2: AsRef<str> + Send;
+
     /// Create a "folder"
     ///
     /// Official document: <https://help.aliyun.com/zh/oss/developer-reference/putobject>
@@ -481,6 +488,19 @@ impl ObjectOperations for Client {
         buf.flush().await?;
 
         Ok(buf)
+    }
+
+    async fn get_object_stream<S1, S2>(&self, bucket_name: S1, object_key: S2, options: Option<GetObjectOptions>) -> Result<ByteStream>
+    where
+        S1: AsRef<str> + Send,
+        S2: AsRef<str> + Send
+    {
+        let bucket_name = bucket_name.as_ref();
+        let object_key = object_key.as_ref();
+
+        let request = build_get_object_request(bucket_name, object_key, &options)?;
+        let (_, stream) = self.do_request::<ByteStream>(request).await?;
+        Ok(stream)
     }
 
     /// Create a "folder".
